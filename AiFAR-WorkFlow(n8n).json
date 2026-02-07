@@ -1,0 +1,238 @@
+{
+  "name": "AI Finance Receipt - AWS & Groq",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b4f2d3f9-3776-436e-9f8d-124f49087043",
+      "name": "Parse CSV Data",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1296,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $('When chat message received').item.json.sessionId }}"
+      },
+      "id": "55bb5c9f-c35c-49e9-afbd-9f44c86a1646",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2112,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.ai_prompt }}",
+        "options": {
+          "systemMessage": "You are a helpful university finance assistant. The user will provide a student ID. Use the provided student data to generate a clean, professional text receipt. Rules: 1. Do NOT calculate numbers. Use the exact values provided. 2. If the status is 'OUTSTANDING', highlight the remaining balance clearly. 3. Keep the tone professional and concise. 4. Format the receipt in a clear, easy-to-read structure with bullet points or sections. 5. Include all provided information: student name, ID, program, fees, payments, balance, status, transaction ID, receipt number, and payment date. The student data will be available in the context."
+        }
+      },
+      "id": "70fe6b3e-ecbd-4736-aa1f-7400cb709716",
+      "name": "Response Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1968,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        560
+      ],
+      "id": "4fe0e9e8-66a8-49e2-86ac-f6eb33f43ced",
+      "name": "Groq Model",
+      "credentials": {
+        "groqApi": {
+          "id": "plk8zOMeaeTuqj7z",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "bucketName": "finance-ai-chatbot",
+        "fileKey": "payments_training_5000.csv"
+      },
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        336
+      ],
+      "id": "55fcef1d-6b27-4178-8073-400b728a0a48",
+      "name": "Get CSV from S3",
+      "credentials": {
+        "aws": {
+          "id": "udb0lDqqRrjWyzpX",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "public": true,
+        "availableInChat": true,
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [
+        848,
+        336
+      ],
+      "id": "905e95eb-ad4c-4482-931b-756446264008",
+      "name": "When chat message received",
+      "webhookId": "9169a175-7e7e-4eb7-8e98-4d1196df6f44",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get chat input from the trigger node\nconst chatInput = $('When chat message received').first().json.chatInput;\n\n// Extract 8-digit student ID using regex\nconst studentIdMatch = chatInput.match(/\\b\\d{8}\\b/);\nconst searchStudentId = studentIdMatch ? studentIdMatch[0] : null;\n\n// Get all CSV items\nconst csvItems = $input.all();\n\n// Search for matching student\nlet foundStudent = null;\nif (searchStudentId) {\n  foundStudent = csvItems.find(item => {\n    const studentId = item.json['﻿student_id'] || item.json['student_id'];\n    return studentId && studentId.toString() === searchStudentId;\n  });\n}\n\n// If student found, return structured data using new CSV columns\nif (foundStudent) {\n  const studentData = foundStudent.json;\n  \n  // Extract financial data from new CSV structure\n  const totalFees = parseFloat(studentData.total_fees_aed) || 0;\n  const amountPaid = parseFloat(studentData.amount_paid_aed) || 0;\n  const balanceDue = parseFloat(studentData.balance_aed) || 0;\n  \n  return [{\n    json: {\n      found: true,\n      chatInput: chatInput,\n      student_id: studentData['﻿student_id'] || studentData['student_id'],\n      full_name: studentData.full_name,\n      email: studentData.email,\n      program: studentData.program,\n      total_fees: totalFees.toFixed(2),\n      amount_paid: amountPaid.toFixed(2),\n      balance_due: balanceDue.toFixed(2),\n      payment_status: studentData.payment_status,\n      transaction_id: studentData.transaction_id,\n      receipt_number: studentData.receipt_number,\n      payment_date: studentData.payment_date,\n      currency: studentData.currency || 'AED'\n    }\n  }];\n} else {\n  // Student not found\n  return [{\n    json: {\n      found: false,\n      chatInput: chatInput,\n      searchedId: searchStudentId,\n      message: searchStudentId \n        ? `Student ID ${searchStudentId} was not found in our records. Please verify the ID and try again.`\n        : 'No valid 8-digit student ID was found in your message. Please provide a student ID.'\n    }\n  }];\n}"
+      },
+      "id": "98c56d64-c63c-462a-a122-4a36a03bf277",
+      "name": "Find Student by ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "ai_prompt",
+              "value": "={{ $json.found ? 'Generate a professional receipt for student: ' + ($json.full_name || 'Unknown') + '. ID: ' + ($json.student_id || 'Unknown') + '. Program: ' + ($json.program || 'General') + '. Amount Paid: ' + ($json.currency || 'AED') + ' ' + ($json.amount_paid || '0') + '. Total Fees: ' + ($json.currency || 'AED') + ' ' + ($json.total_fees || '0') + '. Balance: ' + ($json.currency || 'AED') + ' ' + ($json.balance_due || '0') + '. Status: ' + ($json.payment_status || 'Unknown') + '. Transaction ID: ' + ($json.transaction_id || 'N/A') + '. Receipt Number: ' + ($json.receipt_number || 'N/A') + '. Payment Date: ' + ($json.payment_date || 'N/A') : 'Apologize to the user. The Student ID provided could not be found. Ask them to verify the ID.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f570e1ed-89a9-4ba8-95cc-604c429c81d3",
+      "name": "Prepare AI Prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        336
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Response Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse CSV Data": {
+      "main": [
+        [
+          {
+            "node": "Find Student by ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Response Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get CSV from S3": {
+      "main": [
+        [
+          {
+            "node": "Parse CSV Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Get CSV from S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Student by ID": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Response Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ecd9ba78-5932-409b-b937-37d9a7c0d04f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "47be6275e7878cf322b98e4dd6dd8fd93f14706b4281dc66ae667df6617da001"
+  },
+  "id": "vP-uai81g8Iv4vKdE0JBP",
+  "tags": []
+}

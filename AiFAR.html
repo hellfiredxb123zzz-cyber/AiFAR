@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 90vh;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f7f7f8;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            max-width: 85%;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Markdown-style formatting in bot messages */
+        .message.bot .message-content strong {
+            font-weight: 700;
+            color: #1f2937;
+            display: block;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .message.bot .message-content strong:first-child {
+            margin-top: 0;
+        }
+
+        .download-pdf-btn {
+            margin-top: 8px;
+            padding: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-pdf-btn:hover {
+            background: #5568d3;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-pdf-btn::before {
+            content: "";
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        .message.system .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            padding: 20px 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            line-height: 1.6;
+        }
+
+        .message.system {
+            justify-content: flex-start;
+        }
+        
+        .message.system .avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message.system .message-wrapper {
+            max-width: 85%;
+        }
+
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            max-width: 85%;
+        }
+
+        .message.user .message-wrapper {
+            align-items: flex-end;
+            max-width: 75%;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 24px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendButton {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        #sendButton:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            width: fit-content;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.bot .avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.user .avatar {
+            background: #e5e7eb;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Finance Auto Response for Receipt Requests</h1>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message system">
+                <div class="avatar">🤖</div>
+                <div class="message-wrapper">
+                    <div class="message-content">Welcome to the University Finance Receipt System! 👋<br><br>Please enter your Student ID to retrieve your official receipt.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <input 
+                type="text" 
+                id="messageInput" 
+                placeholder="Type your message..." 
+                autocomplete="off"
+                maxlength="500"
+            />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const webhookUrl = 'https://khxl00d.app.n8n.cloud/webhook/9169a175-7e7e-4eb7-8e98-4d1196df6f44/chat';
+
+        function downloadAsPDF(text) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            let yPosition = 20;
+            const pageWidth = 180;
+            const lineHeight = 7;
+            const margin = 15;
+            
+            // Split text by bold sections using ** markers
+            const parts = text.split(/(\*\*.*?\*\*)/g);
+            
+            for (let part of parts) {
+                if (!part) continue;
+                
+                // Check if this part is bold (wrapped in **)
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    // Remove ** markers and set bold font
+                    const boldText = part.replace(/\*\*/g, '');
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(13);
+                    
+                    // Split into lines if needed
+                    const lines = doc.splitTextToSize(boldText, pageWidth);
+                    
+                    // Add some space before section headers
+                    if (yPosition > 20) {
+                        yPosition += 3;
+                    }
+                    
+                    doc.text(lines, margin, yPosition);
+                    yPosition += lines.length * lineHeight;
+                    
+                } else {
+                    // Regular text
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(11);
+                    
+                    const lines = doc.splitTextToSize(part, pageWidth);
+                    doc.text(lines, margin, yPosition);
+                    yPosition += lines.length * (lineHeight - 1);
+                }
+                
+                // Check if we need a new page
+                if (yPosition > 280) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+            }
+            
+            // Generate filename with timestamp
+            const timestamp = new Date().toISOString().slice(0, 10);
+            doc.save(`receipt-${timestamp}.pdf`);
+        }
+
+        function addMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = type === 'bot' ? '🤖' : type === 'system' ? '🤖' : 'U';
+            
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = 'message-wrapper';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Parse markdown-style formatting for bot messages
+            if (type === 'bot') {
+                // Convert **text** to <strong>text</strong>
+                let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                contentDiv.innerHTML = formattedText;
+                
+                // Check if this is an apology/error message
+                const isApology = text.toLowerCase().includes('apologi') || 
+                                 text.toLowerCase().includes('unable to locate') ||
+                                 text.toLowerCase().includes('not found') ||
+                                 text.toLowerCase().includes('could not be found') ||
+                                 text.toLowerCase().includes('verify the id') ||
+                                 text.toLowerCase().includes('no valid') ||
+                                 text.toLowerCase().includes('not recognized');
+                
+                wrapperDiv.appendChild(contentDiv);
+                
+                // Only show download button if it's NOT an apology
+                if (!isApology) {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-pdf-btn';
+                    downloadBtn.innerHTML = '📄';
+                    downloadBtn.title = 'Download as PDF';
+                    downloadBtn.onclick = () => downloadAsPDF(text);
+                    wrapperDiv.appendChild(downloadBtn);
+                }
+            } else {
+                contentDiv.textContent = text;
+                wrapperDiv.appendChild(contentDiv);
+            }
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(wrapperDiv);
+            chatContainer.appendChild(messageDiv);
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'message bot';
+            indicator.id = 'typingIndicator';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'avatar';
+            avatar.textContent = '🤖';
+            
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator active';
+            typingDiv.innerHTML = '<span></span><span></span><span></span>';
+            
+            indicator.appendChild(avatar);
+            indicator.appendChild(typingDiv);
+            chatContainer.appendChild(indicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+            sendButton.disabled = true;
+            addTypingIndicator();
+
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        action: 'sendMessage',
+                        sessionId: 'demo-session',
+                        chatInput: message
+                    })
+                });
+
+                removeTypingIndicator();
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // Get response as text first
+                const responseText = await response.text();
+                let botResponse = '';
+                
+                // Check if it's streaming JSON (multiple JSON objects on separate lines)
+                if (responseText.includes('{"type":"item"')) {
+                    // Parse streaming response
+                    const lines = responseText.trim().split('\n');
+                    const contentParts = [];
+                    
+                    for (const line of lines) {
+                        try {
+                            const jsonObj = JSON.parse(line.trim());
+                            if (jsonObj.type === 'item' && jsonObj.content) {
+                                contentParts.push(jsonObj.content);
+                            }
+                        } catch (e) {
+                            // Skip invalid JSON lines
+                        }
+                    }
+                    
+                    botResponse = contentParts.join('');
+                } else {
+                    // Try to parse as single JSON object
+                    try {
+                        const data = JSON.parse(responseText);
+                        
+                        if (data.output) {
+                            botResponse = data.output;
+                        } else if (data.response) {
+                            botResponse = data.response;
+                        } else if (data.message) {
+                            botResponse = data.message;
+                        } else if (data.text) {
+                            botResponse = data.text;
+                        } else {
+                            botResponse = JSON.stringify(data, null, 2);
+                        }
+                    } catch (jsonError) {
+                        // If not valid JSON, just use the text directly
+                        botResponse = responseText;
+                    }
+                }
+
+                addMessage(botResponse, 'bot');
+            } catch (error) {
+                removeTypingIndicator();
+                
+                // Show detailed error message
+                let errorMsg = `❌ Connection Error: ${error.message}\n\n`;
+                errorMsg += "This is likely a CORS issue. To fix this in n8n:\n";
+                errorMsg += "1. Open your webhook node\n";
+                errorMsg += "2. Go to 'Options' or 'Settings'\n";
+                errorMsg += "3. Enable 'CORS' or add response headers:\n";
+                errorMsg += "   - Access-Control-Allow-Origin: *\n";
+                errorMsg += "   - Access-Control-Allow-Methods: POST, OPTIONS\n";
+                errorMsg += "   - Access-Control-Allow-Headers: Content-Type";
+                
+                addMessage(errorMsg, 'system');
+                console.error('Chatbot error:', error);
+            } finally {
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Focus input on load
+        messageInput.focus();
+    </script>
+</body>
+</html>
