@@ -1,8 +1,3 @@
-Here is a comprehensive `README.md` file for your GitHub repository. It includes all the necessary sections to help others verify, install, and run your project.
-
-You can create a file named `README.md` in your project folder and paste this content directly into it.
-
----
 
 # 🎓 AI University Finance Assistant
 
@@ -97,5 +92,6 @@ To verify the system is working correctly and securely, try these test cases:
 This project implements **Strict Equality Matching** (`===`) in the backend logic. This ensures that a user typing a partial ID (e.g., "2021") does **not** receive data for a student with a similar ID (e.g., "20218314").
 
 ## 📄 License
+
 
 This project is open-source and available under the MIT License.
